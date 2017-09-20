@@ -95,12 +95,12 @@ class SelectorBIC(ModelSelector):
 				continue
 
 			# Determine performance by penaltizing complex models to prevent overfitting
-			n = hmm_model.n_components # number of data points
-			d = hmm_model.n_features # number of features
-			p = n**2 + 2*n*d - 1 # number of parameters
+			data_size = hmm_model.n_components
+			feature_size = hmm_model.n_features
+			num_parameters = data_size**2 + 2*data_size*feature_size - 1
 
 			# BIC equation 
-			bic_score = -2*logL + p*np.log(total_length)
+			bic_score = -2*logL + num_parameters*np.log(total_length)
 
 			# Check the performance against best model so far
 			if bic_score > best_bic_score:

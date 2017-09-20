@@ -46,7 +46,9 @@ def recognize(models: dict, test_set: SinglesData):
       probabilities.append(probability)
 
       # Determine the max score for each model
-      guess = max([(v,k) for k, v in probability.items()])[1]
+      # Took inspiration for the Udacity discussion board to find the max score:
+      # https://discussions.udacity.com/t/recognizer-implementation/234793/40
+      guess = max([(logL, word) for word, logL in probability.items()])[1]
 
       # Update the tested word 
       guesses.append(guess)
