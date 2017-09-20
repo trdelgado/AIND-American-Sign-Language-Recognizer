@@ -76,29 +76,31 @@ class SelectorBIC(ModelSelector):
 		"""
 		warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-		# Initialize variables
+		# Initialize best score, best model, and total length of the data
 		best_bic_score = float("-inf")
 		best_model = None
-		N = sum(self.lengths)
+		total_length = sum(self.lengths)
 
-		# Loop through model parameters to initialize model
+		# Loop through various hmm model parameters
 		for n_states in range(self.min_n_components, self.max_n_components+1):
 
-			# Initialize the model
-			hmm_model = self.base_model(n_states)
-
 			try:
+				# Initialize and train the hmm model based on number of hidden states
+				hmm_model = self.base_model(n_states)
+
 				# Get the log score
 				logL = hmm_model.score(self.X, self.lengths)
 
 			except:
 				continue
 
-			# Determine the model performance
+			# Determine performance by penaltizing complex models to prevent overfitting
 			n = hmm_model.n_components # number of data points
 			d = hmm_model.n_features # number of features
-			p = n**2 + 2 * n * d - 1 # number of parameters
-			bic_score = -2*logL + p*np.log(N) # bic equation
+			p = n**2 + 2*n*d - 1 # number of parameters
+
+			# BIC equation 
+			bic_score = -2*logL + p*np.log(total_length)
 
 			# Check the performance against best model so far
 			if bic_score > best_bic_score:
@@ -122,14 +124,14 @@ class SelectorDIC(ModelSelector):
 	def select(self):
 		warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-		# Initialize variables
+		# Initialize best score and model
 		best_dic_score = float("-inf")
 		best_model = None
 
-		# Loop through model parameters to initialize model
+		# Loop through various hmm model parameters
 		for n_states in range(self.min_n_components, self.max_n_components+1):
 
-			# Initialize the model
+			# Initialize and train the hmm model based on number of hidden states
 			hmm_model = self.base_model(n_states)
 
 			try:
@@ -139,24 +141,27 @@ class SelectorDIC(ModelSelector):
 			except:
 				continue
 
+			# Initialize score variable
 			sumLog = 0.0
 			total = 0
 
-			# Loop through words
+			# Loop through words to see how well each model can discriminate from other words in the model
 			for word in self.words.keys():
 
 				total += 1
 
+				# Skip the current word that we are testing against the rest of the vocabulary
 				if word != self.this_word:
 
-					# Logs summation
+					# Calculate performance of other words based on this word's hmm model
 					X, lengths = self.hwords[word]
 					sumLog += hmm_model.score(X, lengths)
 
 			# Calculate average log
 			avgLog = sumLog/total
 
-			# dic equation
+			# DIC equation is the sum of the log likelihood score of this word
+			# and the average log anti-likelihood terms of the rest of the vocabulary
 			dic_score = logL + avgLog
 
 			# Check the performance against best model so far
@@ -176,26 +181,27 @@ class SelectorCV(ModelSelector):
 	def select(self):
 		warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-		# Initialize KFold, model, and log scores
+		# Initialize model score and parameter variables
 		best_logL = float("-inf")
-		n_splits = min(len(self.lengths), 3)
-		split_method = KFold(n_splits)
+		best_model = None
+		best_n = None
 
-		# Loop through model parameters to initialize model
+		# Loop through and test various hmm model parameters
 		for n_states in range(self.min_n_components, self.max_n_components+1):
+			try:
+				# Intialize KFold split and total log score
+				total_logL = 0
+				n_splits = min(len(self.lengths), 3)
+				split_method = KFold(n_splits)
 
-			# Intialize total log score
-			total_logL = 0
+				# Loop through k-fold cross validation sets
+				for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
 
-			# Loop through k-fold cross validation sets
-			for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+					# Initialize the training and testing data
+					X_train, length_train = combine_sequences(cv_train_idx, self.sequences)
+					X_test, length_test = combine_sequences(cv_test_idx, self.sequences)
 
-				# Initialize the training and testing data
-				X_train, length_train = combine_sequences(cv_train_idx, self.sequences)
-				X_test, length_test = combine_sequences(cv_test_idx, self.sequences)
-
-				try:
-					# Initialize the model
+					# Initialize and train the hmm model based on number of hidden states
 					hmm_model = GaussianHMM(n_components=n_states, n_iter=1000).fit(X_train, length_train)
 
 					# Score the model performance
@@ -204,17 +210,18 @@ class SelectorCV(ModelSelector):
 					# Sum up the total log score
 					total_logL += logL
 
-				except:
-					pass
+				# Calculate the average log score
+				avg_logL = total_logL/n_splits
 
-			# Calculate the average log score
-			avg_logL = total_logL/n_splits
+				# Check the performance against best model so far
+				if avg_logL > best_logL:
+					best_logL = avg_logL
+					best_n = n_states
 
-			# Check the performance against best model so far
-			if avg_logL > best_logL:
-				best_logL = avg_logL
-				best_model = self.base_model(n_states)
+			except:
+				pass
+
+			best_model = self.base_model(best_n)
 
 		# Return best model
 		return best_model
-

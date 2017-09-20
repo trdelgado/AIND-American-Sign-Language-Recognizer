@@ -23,12 +23,11 @@ def recognize(models: dict, test_set: SinglesData):
 
     # TODO implement the recognizer
 
-    # Loop through each word id
-    for word_id in range(len(test_set.get_all_Xlengths())):
+    # Loop through test sequence
+    test_sequence = list(test_set.get_all_Xlengths().values())
+    for test_X, test_Xlength in test_sequence:
 
-      # Initialize data and probability dictionary
-      current_sequence = test_set.get_item_sequences(word_id)
-      current_length = test_set.get_item_Xlengths(word_id)
+      # Initialize probability dictionary
       probability = {}
 
       # Loop through each word, model pair
@@ -36,8 +35,7 @@ def recognize(models: dict, test_set: SinglesData):
 
         # Calculate the log score for each word model
         try:
-            logL = model.score(current_sequence, current_length)
-        
+            logL = model.score(test_X, test_Xlength)
         except:
             logL = float("-inf")
 
