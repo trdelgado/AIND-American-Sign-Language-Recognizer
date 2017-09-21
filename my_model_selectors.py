@@ -77,7 +77,7 @@ class SelectorBIC(ModelSelector):
 		warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 		# Initialize best score, best model, and total length of the data
-		best_bic_score = float("-inf")
+		best_bic_score = float("inf")
 		best_model = None
 		total_length = sum(self.lengths)
 
