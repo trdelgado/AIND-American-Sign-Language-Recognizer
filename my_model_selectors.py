@@ -103,7 +103,7 @@ class SelectorBIC(ModelSelector):
 			bic_score = -2*logL + num_parameters*np.log(total_length)
 
 			# Check the performance against best model so far
-			if bic_score > best_bic_score:
+			if bic_score < best_bic_score:
 				best_bic_score = bic_score
 				best_model = hmm_model
 
@@ -148,10 +148,10 @@ class SelectorDIC(ModelSelector):
 			# Loop through words to see how well each model can discriminate from other words in the model
 			for word in self.words.keys():
 
-				total += 1
-
 				# Skip the current word that we are testing against the rest of the vocabulary
 				if word != self.this_word:
+
+					total += 1
 
 					# Calculate performance of other words based on this word's hmm model
 					X, lengths = self.hwords[word]
